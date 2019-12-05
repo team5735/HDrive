@@ -111,7 +111,7 @@ public class Robot extends TimedRobot {
     if (xbox.getYButton()){
       currentHeading = 0.0;
     } else {
-      currentHeading += getIMUYPR()[0];
+      currentHeading = getIMUYPR()[0];
     }
 
     // drive(rightY, rightX, leftX); Static Drive
