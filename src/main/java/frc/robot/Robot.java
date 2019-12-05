@@ -17,6 +17,9 @@ import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
+import com.ctre.phoenix.motorcontrol.can.TalonSRX;
+import com.ctre.phoenix.sensors.PigeonIMU;
+
 /**
  * The VM is configured to automatically run this class, and to call the
  * functions corresponding to each mode, as described in the TimedRobot
@@ -27,8 +30,10 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 public class Robot extends TimedRobot {
 
   private CANSparkMax leftMaster, rightMaster, leftFollower, rightFollower, centerController;
-
+  private TalonSRX gyroHost;
+  private PigeonIMU gyro;
   private XboxController xbox;
+  private double currentHeading;
 
   /**
    * This function is run when the robot is first started up and should be
@@ -45,7 +50,12 @@ public class Robot extends TimedRobot {
     rightFollower.follow(rightMaster);
     centerController = new CANSparkMax(2, MotorType.kBrushless);
 
+    gyroHost = new TalonSRX(5);
+    gyro = new PigeonIMU(gyroHost);
+
     xbox = new XboxController(0);
+
+    currentHeading = 0.0;
   }
 
   /**
@@ -98,11 +108,18 @@ public class Robot extends TimedRobot {
     rightX = Math.pow(rightX, 3);
     leftX = Math.pow(leftX, 3);
 
-    drive(rightY, rightX, leftX);
+    if (xbox.getYButton()){
+      currentHeading = 0.0;
+    } else {
+      currentHeading += getIMUYPR()[0];
+    }
+
+    // drive(rightY, rightX, leftX); Static Drive
+    driveFieldCentric(rightY, rightX, leftX, currentHeading);
   }
 
   private double forwardLimit = 0.25;
-  private double sidwaysLimit = 0.3;
+  private double sidwaysLimit = 0.5;
 
   private double angularPercentage = 0.3; // FOR CALCULATIONS (RATIO OF ANGULAR)
 
@@ -117,9 +134,15 @@ public class Robot extends TimedRobot {
   }
 
   public void driveFieldCentric(double forwardVelocity, double sidewaysVelocity, double angularVelocity, double currentAngle) {
-      double modifiedForward = forwardVelocity * Math.cos(-currentAngle) + sidewaysVelocity * Math.sin(-currentAngle);
-      double modifiedSideways = forwardVelocity * Math.sin(currentAngle) + sidewaysVelocity * Math.cos(currentAngle);
-      drive(modifiedForward, modifiedSideways, angularVelocity);
+    double modifiedForward = forwardVelocity * Math.cos(-currentAngle) + sidewaysVelocity * Math.sin(-currentAngle);
+    double modifiedSideways = forwardVelocity * Math.sin(currentAngle) + sidewaysVelocity * Math.cos(currentAngle);
+    drive(modifiedForward, modifiedSideways, angularVelocity);
+  }
+
+  public double[] getIMUYPR() {
+    double[] ypr = new double[3];
+    gyro.getYawPitchRoll(ypr);
+    return ypr;
   }
 
   /**
