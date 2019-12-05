@@ -33,7 +33,7 @@ public class Robot extends TimedRobot {
   private TalonSRX gyroHost;
   private PigeonIMU gyro;
   private XboxController xbox;
-  private double currentHeading;
+  private double currentHeading, previousHeading;
 
   /**
    * This function is run when the robot is first started up and should be
@@ -56,6 +56,7 @@ public class Robot extends TimedRobot {
     xbox = new XboxController(0);
 
     currentHeading = 0.0;
+    previousHeading = getIMUYPR()[0];
   }
 
   /**
@@ -111,7 +112,8 @@ public class Robot extends TimedRobot {
     if (xbox.getYButton()){
       currentHeading = 0.0;
     } else {
-      currentHeading = getIMUYPR()[0];
+      currentHeading += getIMUYPR()[0]-previousHeading;
+      previousHeading = getIMUYPR()[0];
     }
 
     // drive(rightY, rightX, leftX); Static Drive
