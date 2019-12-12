@@ -107,10 +107,10 @@ public class Robot extends TimedRobot {
     double rightX = Math.max(-1, Math.min(1, xbox.getX(Hand.kRight)/Math.sqrt(2)*2));
     double leftX = Math.max(-1, Math.min(1, xbox.getX(Hand.kLeft)/Math.sqrt(2)*2));
 
-    rightY = Helper.round(Math.pow(rightY, 3), 2);
-    leftY = Helper.round(Math.pow(leftY, 3), 2);
-    rightX = Helper.round(Math.pow(rightX, 3), 2);
-    leftX = Helper.round(Math.pow(leftX, 3), 2);
+    rightY = Helper.deadband(Helper.round(Math.pow(rightY, 3), 2), Constants.JOYSTICK_DEADBAND);
+    leftY = Helper.deadband(Helper.round(Math.pow(leftY, 3), 2), Constants.JOYSTICK_DEADBAND);
+    rightX = Helper.deadband(Helper.round(Math.pow(rightX, 3), 2), Constants.JOYSTICK_DEADBAND);
+    leftX = Helper.deadband(Helper.round(Math.pow(leftX, 3), 2), Constants.JOYSTICK_DEADBAND);
 
     if (xbox.getYButton()){
       currentHeading = 0.0;
@@ -124,12 +124,13 @@ public class Robot extends TimedRobot {
     }
 
     // System.out.println("[D] Yaw: " + getIMUYPR()[0]);
-    System.out.println("[D] Current Heading: " + currentHeading);
+    // System.out.println("[D] Current Heading: " + currentHeading);
 
     if (driveState){
       drive(rightY, rightX, leftX); //Static Drive
     } else {
-      driveFieldCentric(rightY, rightX, leftX, Helper.round(currentHeading, 2));
+      // driveFieldCentric(rightY, rightX, leftX, Helper.round(currentHeading, 2));
+      driveFieldCentric(rightY, rightX, 0, (int) currentHeading);
     }
   }
 
@@ -152,9 +153,11 @@ public class Robot extends TimedRobot {
   }
 
   public void driveFieldCentric(double forwardVelocity, double sidewaysVelocity, double angularVelocity, double currentAngle) {
-    double modifiedForward = forwardVelocity * Math.cos(-currentAngle) + sidewaysVelocity * Math.sin(-currentAngle);
-    double modifiedSideways = forwardVelocity * Math.sin(currentAngle) + sidewaysVelocity * Math.cos(currentAngle);
-    // System.out.println("forward: " + modifiedForward + ", sideways: " + modifiedSideways);
+    System.out.println("inputForward: " + forwardVelocity + ", inputSideways: " + sidewaysVelocity + ", angularVel: " + angularVelocity + ", angle: " + currentAngle);
+    double angleRad = Math.toRadians(currentAngle);
+    double modifiedForward = forwardVelocity * Math.cos(angleRad) + sidewaysVelocity * Math.sin(-angleRad);
+    double modifiedSideways = forwardVelocity * Math.sin(angleRad) + sidewaysVelocity * Math.cos(angleRad);
+    System.out.println("forward: " + modifiedForward + ", sideways: " + modifiedSideways);
     drive(modifiedForward, modifiedSideways, angularVelocity);
   }
 
