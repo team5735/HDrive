@@ -59,7 +59,7 @@ public class Robot extends TimedRobot {
     currentHeading = 0.0;
     previousHeading = getIMUYPR()[0];
 
-    driveState = true;
+    driveState = false ;
   }
 
   /**
@@ -72,6 +72,7 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void robotPeriodic() {
+    SmartDashboard.putBoolean("driveMode", driveState);
   }
 
   /**
@@ -101,7 +102,7 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void teleopPeriodic() {
-
+    // Joystick input
     double rightY = -Math.max(-1, Math.min(1, xbox.getY(Hand.kRight)/Math.sqrt(2)*2));
     double leftY = -Math.max(-1, Math.min(1, xbox.getY(Hand.kLeft)/Math.sqrt(2)*2));
     double rightX = Math.max(-1, Math.min(1, xbox.getX(Hand.kRight)/Math.sqrt(2)*2));
@@ -112,30 +113,30 @@ public class Robot extends TimedRobot {
     rightX = Helper.deadband(Helper.round(Math.pow(rightX, 3), 2), Constants.JOYSTICK_DEADBAND);
     leftX = Helper.deadband(Helper.round(Math.pow(leftX, 3), 2), Constants.JOYSTICK_DEADBAND);
 
-    if (xbox.getYButton()){
+    // Heading tracking
+    // Gyro returns degrees
+    if (xbox.getYButtonPressed()){
       currentHeading = 0.0;
     } else {
       currentHeading += getIMUYPR()[0]-previousHeading;
       previousHeading = getIMUYPR()[0];
     }
 
-    if (xbox.getXButton()){
+    // Switch from static drive to field centric drive
+    if (xbox.getXButtonPressed()){
       driveState = !driveState;
     }
 
-    // System.out.println("[D] Yaw: " + getIMUYPR()[0]);
-    // System.out.println("[D] Current Heading: " + currentHeading);
 
     if (driveState){
       drive(rightY, rightX, leftX); //Static Drive
     } else {
-      // driveFieldCentric(rightY, rightX, leftX, Helper.round(currentHeading, 2));
-      driveFieldCentric(rightY, rightX, 0, (int) currentHeading);
+      driveFieldCentric(rightY, rightX, leftX, (int) currentHeading);
     }
   }
 
-  private double forwardLimit = 0.25;
-  private double sidwaysLimit = 0.4;
+  private double forwardLimit = 0.35;
+  private double sidwaysLimit = 0.35;
 
   private double angularPercentage = 0.3; // FOR CALCULATIONS (RATIO OF ANGULAR)
 
@@ -144,23 +145,19 @@ public class Robot extends TimedRobot {
     double leftPercentage = forwardVelocity * (1 - angularPercentage) + angularVelocity * angularPercentage;
     double sidewaysPercentage = sidewaysVelocity * (1 - angularPercentage);
 
-    // System.out.println("[D] Forward Percentage: " + leftPercentage);
-    // System.out.println("[D] Sideways Percentage: " + sidewaysPercentage);
-
     leftMaster.set(leftPercentage * forwardLimit);
     rightMaster.set(rightPercentage * forwardLimit);
     centerController.set(sidewaysPercentage * sidwaysLimit);
   }
 
-  public void driveFieldCentric(double forwardVelocity, double sidewaysVelocity, double angularVelocity, double currentAngle) {
-    System.out.println("inputForward: " + forwardVelocity + ", inputSideways: " + sidewaysVelocity + ", angularVel: " + angularVelocity + ", angle: " + currentAngle);
-    double angleRad = Math.toRadians(currentAngle);
+  public void driveFieldCentric(double forwardVelocity, double sidewaysVelocity, double angularVelocity, double currentAngleDegree) {
+    double angleRad = Math.toRadians(currentAngleDegree);
     double modifiedForward = forwardVelocity * Math.cos(angleRad) + sidewaysVelocity * Math.sin(-angleRad);
     double modifiedSideways = forwardVelocity * Math.sin(angleRad) + sidewaysVelocity * Math.cos(angleRad);
-    System.out.println("forward: " + modifiedForward + ", sideways: " + modifiedSideways);
     drive(modifiedForward, modifiedSideways, angularVelocity);
   }
 
+  // Get Yaw Pitch and Roll from gyro
   public double[] getIMUYPR() {
     double[] ypr = new double[3];
     gyro.getYawPitchRoll(ypr);
