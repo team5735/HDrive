@@ -10,6 +10,7 @@ package frc.robot;
 import com.revrobotics.CANSparkMax;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
+import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.GenericHID.Hand;
@@ -33,6 +34,7 @@ public class Robot extends TimedRobot {
   private TalonSRX gyroHost;
   private PigeonIMU gyro;
   private XboxController xbox;
+  private Joystick joy;
   private double currentHeading, previousHeading;
   private boolean driveState;
 
@@ -54,7 +56,8 @@ public class Robot extends TimedRobot {
     gyroHost = new TalonSRX(5);
     gyro = new PigeonIMU(gyroHost);
 
-    xbox = new XboxController(0);
+    // xbox = new XboxController(0);
+    joy = new Joystick(4);
 
     currentHeading = 0.0;
     previousHeading = getIMUYPR()[0];
@@ -102,7 +105,7 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void teleopPeriodic() {
-    // Joystick input
+    // Controller input
     double rightY = -Math.max(-1, Math.min(1, xbox.getY(Hand.kRight)/Math.sqrt(2)*2));
     double leftY = -Math.max(-1, Math.min(1, xbox.getY(Hand.kLeft)/Math.sqrt(2)*2));
     double rightX = Math.max(-1, Math.min(1, xbox.getX(Hand.kRight)/Math.sqrt(2)*2));
@@ -113,9 +116,18 @@ public class Robot extends TimedRobot {
     rightX = Helper.deadband(Helper.round(Math.pow(rightX, 3), 2), Constants.JOYSTICK_DEADBAND);
     leftX = Helper.deadband(Helper.round(Math.pow(leftX, 3), 2), Constants.JOYSTICK_DEADBAND);
 
+    // double y = -Math.max(-1, Math.min(1, joy.getY()/Math.sqrt(2)*2));
+    // double x = Math.max(-1, Math.min(1, joy.getX()/Math.sqrt(2)*2));
+    // double z = Math.max(-1, Math.min(1, joy.getZ()/Math.sqrt(2)*2));
+
+    // y = Helper.deadband(Helper.round(Math.pow(y, 3), 2), Constants.JOYSTICK_DEADBAND);
+    // x = Helper.deadband(Helper.round(Math.pow(x, 3), 2), Constants.JOYSTICK_DEADBAND);
+    // z = Helper.deadband(Helper.round(Math.pow(z, 3), 2), Constants.JOYSTICK_DEADBAND);
+
+
     // Heading tracking
     // Gyro returns degrees
-    if (xbox.getYButtonPressed()){
+    if (xbox.getRawButton(6)){
       currentHeading = 0.0;
     } else {
       currentHeading += getIMUYPR()[0]-previousHeading;
@@ -123,7 +135,7 @@ public class Robot extends TimedRobot {
     }
 
     // Switch from static drive to field centric drive
-    if (xbox.getXButtonPressed()){
+    if (xbox.getRawButton(7)){
       driveState = !driveState;
     }
 
