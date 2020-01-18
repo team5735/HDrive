@@ -34,9 +34,9 @@ public class Robot extends TimedRobot {
   private double currentHeading, previousHeading;
   private boolean driveState;
 
-  private boolean m_LimelightHasValidTarget = false;
-  private double m_LimelightDriveCommand = 0.0;
-  private double m_LimelightSteerCommand = 0.0;
+  private boolean limelightHasValidTarget = false;
+  private double limelightDriveCommand = 0.0;
+  private double limelightSteerCommand = 0.0;
 
   /**
    * This function is run when the robot is first started up and should be used
@@ -110,7 +110,7 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopPeriodic() {
 
-    Update_Limelight_Tracking();
+    updateLimelightTracking();
 
     double rightY = -Math.max(-1, Math.min(1, xbox.getY(Hand.kRight) / Math.sqrt(2) * 2));
     double leftY = -Math.max(-1, Math.min(1, xbox.getY(Hand.kLeft) / Math.sqrt(2) * 2));
@@ -139,11 +139,11 @@ public class Robot extends TimedRobot {
       boolean auto = xbox.getAButton();
 
       if (auto) {
-        if (m_LimelightHasValidTarget) {
+        if (limelightHasValidTarget) {
           // m_Drive.arcadeDrive(0.5 * m_LimelightDriveCommand, 0.5 *
           // m_LimelightSteerCommand);
-          drive(0.4 * m_LimelightDriveCommand + 0.6 * rightY, rightX, 0.5 * m_LimelightSteerCommand + 0.7 * leftX);
-          System.out.println("Drive value: " + m_LimelightDriveCommand + " Steer value: " + m_LimelightSteerCommand);
+          drive(0.4 * limelightDriveCommand + 0.6 * rightY, rightX, 0.5 * limelightSteerCommand + 0.7 * leftX);
+          System.out.println("Drive value: " + limelightDriveCommand + " Steer value: " + limelightSteerCommand);
         } else {
           System.out.println("Target Not Found");
         }
@@ -160,7 +160,7 @@ public class Robot extends TimedRobot {
    * This function implements a simple method of generating driving and steering
    * commands based on the tracking data from a limelight camera.
    */
-  public void Update_Limelight_Tracking() {
+  public void updateLimelightTracking() {
     // These numbers must be tuned for your Robot! Be careful!
     final double STEER_K = 0.03; // how hard to turn toward the target
     final double DRIVE_K = 0.26; // how hard to drive fwd toward the target
@@ -174,17 +174,17 @@ public class Robot extends TimedRobot {
     double ts = NetworkTableInstance.getDefault().getTable("limelight").getEntry("ts").getDouble(0);
 
     if (tv < 1.0) {
-      m_LimelightHasValidTarget = false;
-      m_LimelightDriveCommand = 0.0;
-      m_LimelightSteerCommand = 0.0;
+      limelightHasValidTarget = false;
+      limelightDriveCommand = 0.0;
+      limelightSteerCommand = 0.0;
       return;
     }
 
-    m_LimelightHasValidTarget = true;
+    limelightHasValidTarget = true;
 
     // Start with proportional steering
     double steer_cmd = tx * STEER_K;
-    m_LimelightSteerCommand = steer_cmd;
+    limelightSteerCommand = steer_cmd;
 
     // try to drive forward until the target area reaches our desired area
     double drive_cmd = (DESIRED_TARGET_AREA - ta) * DRIVE_K;
@@ -193,7 +193,7 @@ public class Robot extends TimedRobot {
     if (drive_cmd > MAX_DRIVE) {
       drive_cmd = MAX_DRIVE;
     }
-    m_LimelightDriveCommand = drive_cmd;
+    limelightDriveCommand = drive_cmd;
   }
 
   private double forwardLimit = 0.5;
