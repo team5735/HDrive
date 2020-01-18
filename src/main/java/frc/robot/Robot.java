@@ -7,6 +7,7 @@
 
 package frc.robot;
 
+import com.ctre.phoenix.motorcontrol.ControlMode;
 import com.ctre.phoenix.motorcontrol.can.TalonSRX;
 import com.ctre.phoenix.sensors.PigeonIMU;
 import com.revrobotics.CANSparkMax;
@@ -37,6 +38,7 @@ public class Robot extends TimedRobot {
   private boolean limelightHasValidTarget = false;
   private double limelightDriveCommand = 0.0;
   private double limelightSteerCommand = 0.0;
+  private boolean limelightLight = false;
 
   /**
    * This function is run when the robot is first started up and should be used
@@ -57,6 +59,7 @@ public class Robot extends TimedRobot {
     centerController = new CANSparkMax(2, MotorType.kBrushless);
     centerController.setInverted(true);
     gyroHost = new TalonSRX(6);
+    gyroHost.configFactoryDefault();
     gyro = new PigeonIMU(gyroHost);
 
     xbox = new XboxController(0);
@@ -64,7 +67,7 @@ public class Robot extends TimedRobot {
     currentHeading = 0.0;
     previousHeading = getIMUYPR()[0];
 
-    driveState = false ;
+    driveState = false;
   }
 
   /**
@@ -110,8 +113,6 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopPeriodic() {
 
-    updateLimelightTracking();
-
     double rightY = -Math.max(-1, Math.min(1, xbox.getY(Hand.kRight) / Math.sqrt(2) * 2));
     double leftY = -Math.max(-1, Math.min(1, xbox.getY(Hand.kLeft) / Math.sqrt(2) * 2));
     double rightX = Math.max(-1, Math.min(1, xbox.getX(Hand.kRight) / Math.sqrt(2) * 2));
@@ -134,26 +135,37 @@ public class Robot extends TimedRobot {
       System.out.println((driveState) ? "Static Drive" : "Field Centric");
     }
 
+    System.out.println(currentHeading + "    " + getIMUYPR()[0]);
 
-    if (driveState) {
-      boolean auto = xbox.getAButton();
+    boolean auto = xbox.getAButton();
 
-      if (auto) {
-        if (limelightHasValidTarget) {
-          // m_Drive.arcadeDrive(0.5 * m_LimelightDriveCommand, 0.5 *
-          // m_LimelightSteerCommand);
-          drive(0.4 * limelightDriveCommand + 0.6 * rightY, rightX, 0.5 * limelightSteerCommand + 0.7 * leftX);
-          System.out.println("Drive value: " + limelightDriveCommand + " Steer value: " + limelightSteerCommand);
-        } else {
-          System.out.println("Target Not Found");
-        }
+    if (auto) {
+      limelightLight = true;
+      NetworkTableInstance.getDefault().getTable("limelight").getEntry("ledMode").setNumber(limelightLight ? 3 : 1);
+      NetworkTableInstance.getDefault().getTable("limelight").getEntry("camMode").setNumber(0);
+      updateLimelightTracking();
+
+      if (limelightHasValidTarget) {
+        drive(0.4 * limelightDriveCommand + 0.6 * rightY, rightX, 0.5 * limelightSteerCommand + 0.7 * leftX);
+        // System.out.println("Drive value: " + limelightDriveCommand + " Steer value: "
+        // + limelightSteerCommand);
       } else {
-        drive(rightY, rightX, 0.3 * leftX); // Static Drive
+        System.out.println("Target Not Found");
       }
     } else {
-      // driveFieldCentric(rightY, rightX, leftX, Helper.round(currentHeading, 2));
-      driveFieldCentric(rightY, rightX, leftX, (int) currentHeading);
+      limelightLight = false;
+      NetworkTableInstance.getDefault().getTable("limelight").getEntry("ledMode").setNumber(limelightLight ? 3 : 1);
+      NetworkTableInstance.getDefault().getTable("limelight").getEntry("camMode").setNumber(1);
+
+      if (driveState) {
+        drive(rightY, rightX, 0.3 * leftX); // Static Drive
+      } else {
+        // driveFieldCentric(rightY, rightX, leftX, Helper.round(currentHeading, 2));
+        driveFieldCentric(rightY, rightX, leftX, (int) currentHeading);
+      }
     }
+
+    gyroHost.set(ControlMode.PercentOutput, leftY);
   }
 
   /**
