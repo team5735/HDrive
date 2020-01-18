@@ -13,6 +13,7 @@ import com.revrobotics.CANSparkMax;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
 import edu.wpi.first.wpilibj.GenericHID.Hand;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.networktables.*;
@@ -63,7 +64,7 @@ public class Robot extends TimedRobot {
     currentHeading = 0.0;
     previousHeading = getIMUYPR()[0];
 
-    driveState = true;
+    driveState = false ;
   }
 
   /**
@@ -77,6 +78,7 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void robotPeriodic() {
+    SmartDashboard.putBoolean("driveMode", driveState);
   }
 
   /**
@@ -132,8 +134,6 @@ public class Robot extends TimedRobot {
       System.out.println((driveState) ? "Static Drive" : "Field Centric");
     }
 
-    // System.out.println("[D] Yaw: " + getIMUYPR()[0]);
-    // System.out.println("[D] Current Heading: " + currentHeading);
 
     if (driveState) {
       boolean auto = xbox.getAButton();
@@ -224,6 +224,7 @@ public class Robot extends TimedRobot {
     drive(modifiedForward, modifiedSideways, angularVelocity);
   }
 
+  // Get Yaw Pitch and Roll from gyro
   public double[] getIMUYPR() {
     double[] ypr = new double[3];
     gyro.getYawPitchRoll(ypr);
