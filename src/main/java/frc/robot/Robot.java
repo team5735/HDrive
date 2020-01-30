@@ -40,6 +40,11 @@ public class Robot extends TimedRobot {
   private double limelightSteerCommand = 0.0;
   private boolean limelightLight = false;
 
+  public enum LimelightState {
+    VISION_TARGET,
+    BALL
+  }
+
   /**
    * This function is run when the robot is first started up and should be used
    * for any initialization code.
@@ -141,10 +146,24 @@ public class Robot extends TimedRobot {
 
     if (auto) {
       limelightLight = true;
+      NetworkTableInstance.getDefault().getTable("limelight").getEntry("pipeline").setNumber(0);
       NetworkTableInstance.getDefault().getTable("limelight").getEntry("ledMode").setNumber(limelightLight ? 3 : 1);
       NetworkTableInstance.getDefault().getTable("limelight").getEntry("camMode").setNumber(0);
-      updateLimelightTracking();
+      updateLimelightTracking(LimelightState.VISION_TARGET);
 
+      if (limelightHasValidTarget) {
+        drive(0.4 * limelightDriveCommand + 0.6 * rightY, rightX, 0.5 * limelightSteerCommand + 0.7 * leftX);
+        // System.out.println("Drive value: " + limelightDriveCommand + " Steer value: "
+        // + limelightSteerCommand);
+      } else {
+        System.out.println("Target Not Found");
+      }
+    } else if (xbox.getBButton()) {
+      limelightLight = true;
+      NetworkTableInstance.getDefault().getTable("limelight").getEntry("pipeline").setNumber(1);
+      NetworkTableInstance.getDefault().getTable("limelight").getEntry("ledMode").setNumber(limelightLight ? 3 : 1);
+      NetworkTableInstance.getDefault().getTable("limelight").getEntry("camMode").setNumber(0);
+      updateLimelightTracking(LimelightState.BALL);
       if (limelightHasValidTarget) {
         drive(0.4 * limelightDriveCommand + 0.6 * rightY, rightX, 0.5 * limelightSteerCommand + 0.7 * leftX);
         // System.out.println("Drive value: " + limelightDriveCommand + " Steer value: "
@@ -172,11 +191,11 @@ public class Robot extends TimedRobot {
    * This function implements a simple method of generating driving and steering
    * commands based on the tracking data from a limelight camera.
    */
-  public void updateLimelightTracking() {
+  public void updateLimelightTracking(LimelightState state) {
     // These numbers must be tuned for your Robot! Be careful!
     final double STEER_K = 0.03; // how hard to turn toward the target
     final double DRIVE_K = 0.26; // how hard to drive fwd toward the target
-    final double DESIRED_TARGET_AREA = 10.0; // Area of the target when the robot reaches the wall
+    final double DESIRED_TARGET_AREA = (state == LimelightState.VISION_TARGET) ? 10.0 : 50.0;//10.0; // Area of the target when the robot reaches the wall
     final double MAX_DRIVE = 0.7; // Simple speed limit so we don't drive too fast
 
     double tv = NetworkTableInstance.getDefault().getTable("limelight").getEntry("tv").getDouble(0);
@@ -185,7 +204,8 @@ public class Robot extends TimedRobot {
     double ta = NetworkTableInstance.getDefault().getTable("limelight").getEntry("ta").getDouble(0);
     double ts = NetworkTableInstance.getDefault().getTable("limelight").getEntry("ts").getDouble(0);
 
-    if (tv < 1.0) {
+    if (tv < ((state == LimelightState.VISION_TARGET) ? 1.0 : 0.7)
+        || (state == LimelightState.BALL && (Math.abs(tx) > 25 || Math.abs(ty) > 18.5))) {
       limelightHasValidTarget = false;
       limelightDriveCommand = 0.0;
       limelightSteerCommand = 0.0;
