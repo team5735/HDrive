@@ -9,9 +9,8 @@ package frc.robot;
 
 import com.ctre.phoenix.motorcontrol.ControlMode;
 import com.ctre.phoenix.motorcontrol.can.TalonSRX;
+import com.ctre.phoenix.motorcontrol.can.TalonFX;
 import com.ctre.phoenix.sensors.PigeonIMU;
-import com.revrobotics.CANSparkMax;
-import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
 import edu.wpi.first.wpilibj.GenericHID.Hand;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -28,12 +27,12 @@ import edu.wpi.first.networktables.*;
  */
 public class Robot extends TimedRobot {
 
-  private CANSparkMax leftMaster, rightMaster, leftFollower, rightFollower, centerController;
+  private TalonFX leftMaster, rightMaster, leftFollower, rightFollower, centerController;
   private TalonSRX gyroHost;
   private PigeonIMU gyro;
   private XboxController xbox;
   private double currentHeading, previousHeading;
-  private boolean driveState;
+  private boolean driveMode;
 
   private boolean limelightHasValidTarget = false;
   private double limelightDriveCommand = 0.0;
@@ -46,19 +45,22 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void robotInit() {
-    leftMaster = new CANSparkMax(4, MotorType.kBrushless);
+    leftMaster = new TalonFX(Constants.LEFT_MASTER_ID);
     leftMaster.setInverted(false);
-    leftFollower = new CANSparkMax(5, MotorType.kBrushless);
+    leftFollower = new TalonFX(Constants.LEFT_SLAVE_ID);
     leftFollower.follow(leftMaster);
-    leftFollower.setInverted(true);
-    rightMaster = new CANSparkMax(1, MotorType.kBrushless);
-    rightMaster.setInverted(true);
-    rightFollower = new CANSparkMax(3, MotorType.kBrushless);
+    leftFollower.setInverted(false);
+
+    rightMaster = new TalonFX(Constants.RIGHT_MASTER_ID);
+    rightMaster.setInverted(false);
+    rightFollower = new TalonFX(Constants.RIGHT_SLAVE_ID);
     rightFollower.follow(rightMaster);
-    rightFollower.setInverted(true);
-    centerController = new CANSparkMax(2, MotorType.kBrushless);
+    rightFollower.setInverted(false);
+
+    centerController = new TalonFX(Constants.CENTER_ID);
     centerController.setInverted(true);
-    gyroHost = new TalonSRX(6);
+
+    gyroHost = new TalonSRX(Constants.HOST_TALON_ID);
     gyroHost.configFactoryDefault();
     gyro = new PigeonIMU(gyroHost);
 
@@ -67,7 +69,7 @@ public class Robot extends TimedRobot {
     currentHeading = 0.0;
     previousHeading = getIMUYPR()[0];
 
-    driveState = false;
+    driveMode = false;
   }
 
   /**
@@ -81,7 +83,8 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void robotPeriodic() {
-    SmartDashboard.putBoolean("driveMode", driveState);
+    SmartDashboard.putString("driveMode", (driveMode) ? "Static Drive" : "Field Centric");
+    SmartDashboard.putNumber("heading", currentHeading);
   }
 
   /**
@@ -131,13 +134,13 @@ public class Robot extends TimedRobot {
     }
 
     if (xbox.getXButtonPressed()) {
-      driveState = !driveState;
-      System.out.println((driveState) ? "Static Drive" : "Field Centric");
+      driveMode = !driveMode;
+      System.out.println((driveMode) ? "Static Drive" : "Field Centric");
     }
 
     System.out.println(currentHeading + "    " + getIMUYPR()[0]);
 
-    boolean auto = xbox.getAButton();
+    boolean auto = xbox.getBumper(Hand.kLeft);
 
     if (auto) {
       limelightLight = true;
@@ -157,7 +160,7 @@ public class Robot extends TimedRobot {
       NetworkTableInstance.getDefault().getTable("limelight").getEntry("ledMode").setNumber(limelightLight ? 3 : 1);
       NetworkTableInstance.getDefault().getTable("limelight").getEntry("camMode").setNumber(1);
 
-      if (driveState) {
+      if (driveMode) {
         drive(rightY, rightX, 0.3 * leftX); // Static Drive
       } else {
         // driveFieldCentric(rightY, rightX, leftX, Helper.round(currentHeading, 2));
@@ -218,9 +221,9 @@ public class Robot extends TimedRobot {
     double leftPercentage = forwardVelocity * (1 - angularPercentage) - angularVelocity * angularPercentage;
     double sidewaysPercentage = sidewaysVelocity * (1 - angularPercentage);
 
-    leftMaster.set(leftPercentage * forwardLimit);
-    rightMaster.set(rightPercentage * forwardLimit);
-    centerController.set(sidewaysPercentage * sidwaysLimit);
+    leftMaster.set(ControlMode.PercentOutput, leftPercentage * forwardLimit);
+    rightMaster.set(ControlMode.PercentOutput, rightPercentage * forwardLimit);
+    centerController.set(ControlMode.PercentOutput, sidewaysPercentage * sidwaysLimit);
   }
 
   public void driveFieldCentric(double forwardVelocity, double sidewaysVelocity, double angularVelocity,
