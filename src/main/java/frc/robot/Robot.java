@@ -46,16 +46,16 @@ public class Robot extends TimedRobot {
   @Override
   public void robotInit() {
     leftMaster = new TalonFX(Constants.LEFT_MASTER_ID);
-    leftMaster.setInverted(false);
+    leftMaster.setInverted(Constants.LEFT_INVERTED);
     leftFollower = new TalonFX(Constants.LEFT_SLAVE_ID);
     leftFollower.follow(leftMaster);
-    leftFollower.setInverted(false);
+    leftFollower.setInverted(Constants.LEFT_INVERTED);
 
     rightMaster = new TalonFX(Constants.RIGHT_MASTER_ID);
-    rightMaster.setInverted(false);
+    rightMaster.setInverted(Constants.RIGHT_INVERTED);
     rightFollower = new TalonFX(Constants.RIGHT_SLAVE_ID);
     rightFollower.follow(rightMaster);
-    rightFollower.setInverted(false);
+    rightFollower.setInverted(Constants.RIGHT_INVERTED);
 
     centerController = new TalonFX(Constants.CENTER_ID);
     centerController.setInverted(true);
