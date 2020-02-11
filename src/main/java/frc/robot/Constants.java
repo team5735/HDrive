@@ -9,7 +9,7 @@ public class Constants {
 
     public static int RIGHT_MASTER_ID = 58;
     public static int RIGHT_SLAVE_ID = 59;
-    public static boolean RIGHT_INVERTED = true;
+    public static boolean RIGHT_INVERTED = false;
 
     public static int CENTER_ID = 55;
 
