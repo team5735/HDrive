@@ -1,4 +1,4 @@
-/*----------------------------------------------------------------------------*/
+ /*----------------------------------------------------------------------------*/
 /* Copyright (c) 2017-2018 FIRST. All Rights Reserved.                        */
 /* Open Source Software - may be modified and shared by FRC teams. The code   */
 /* must be accompanied by the FIRST BSD license file in the root directory of */
@@ -63,7 +63,7 @@ public class Robot extends TimedRobot {
     rightFollower.setInverted(Constants.RIGHT_INVERTED);
 
     centerController = new TalonFX(Constants.CENTER_ID);
-    centerController.setInverted(true);
+    centerController.setInverted(false);
 
     gyroHost = new TalonSRX(Constants.HOST_TALON_ID);
     gyroHost.configFactoryDefault();
@@ -124,7 +124,7 @@ public class Robot extends TimedRobot {
     double rightY = -Math.max(-1, Math.min(1, xbox.getY(Hand.kRight) / Math.sqrt(2) * 2));
     double leftY = -Math.max(-1, Math.min(1, xbox.getY(Hand.kLeft) / Math.sqrt(2) * 2));
     double rightX = Math.max(-1, Math.min(1, xbox.getX(Hand.kRight) / Math.sqrt(2) * 2));
-    double leftX = Math.max(-1, Math.min(1, xbox.getX(Hand.kLeft) / Math.sqrt(2) * 2));
+    double leftX = -Math.max(-1, Math.min(1, xbox.getX(Hand.kLeft) / Math.sqrt(2) * 2));
 
     rightY = Helper.deadband(Helper.round(Math.pow(rightY, 3), 2), Constants.JOYSTICK_DEADBAND);
     leftY = Helper.deadband(Helper.round(Math.pow(leftY, 3), 2), Constants.JOYSTICK_DEADBAND);
@@ -140,10 +140,10 @@ public class Robot extends TimedRobot {
 
     if (xbox.getXButtonPressed()) {
       driveMode = !driveMode;
-      System.out.println((driveMode) ? "Static Drive" : "Field Centric");
+      // System.out.println((driveMode) ? "Static Drive" : "Field Centric");
     }
 
-    System.out.println(currentHeading + "    " + getIMUYPR()[0]);
+    // System.out.println(currentHeading + "    " + getIMUYPR()[0]);
 
     boolean auto = xbox.getBumper(Hand.kLeft);
 
