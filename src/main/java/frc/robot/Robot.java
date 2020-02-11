@@ -1,4 +1,4 @@
- /*----------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 /* Copyright (c) 2017-2018 FIRST. All Rights Reserved.                        */
 /* Open Source Software - may be modified and shared by FRC teams. The code   */
 /* must be accompanied by the FIRST BSD license file in the root directory of */
@@ -7,16 +7,20 @@
 
 package frc.robot;
 
+import java.util.ArrayList;
+
 import com.ctre.phoenix.motorcontrol.ControlMode;
-import com.ctre.phoenix.motorcontrol.can.TalonSRX;
+import com.ctre.phoenix.motorcontrol.StatorCurrentLimitConfiguration;
 import com.ctre.phoenix.motorcontrol.can.TalonFX;
+import com.ctre.phoenix.motorcontrol.can.TalonSRX;
+import com.ctre.phoenix.music.Orchestra;
 import com.ctre.phoenix.sensors.PigeonIMU;
 
+import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.GenericHID.Hand;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
-import edu.wpi.first.networktables.*;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 /**
  * The VM is configured to automatically run this class, and to call the
@@ -39,6 +43,8 @@ public class Robot extends TimedRobot {
   private double limelightSteerCommand = 0.0;
   private boolean limelightLight = false;
 
+  private Orchestra orchestra;
+
   public enum LimelightState {
     VISION_TARGET,
     BALL
@@ -52,18 +58,23 @@ public class Robot extends TimedRobot {
   public void robotInit() {
     leftMaster = new TalonFX(Constants.LEFT_MASTER_ID);
     leftMaster.setInverted(Constants.LEFT_INVERTED);
+    leftMaster.configStatorCurrentLimit(Constants.TALON_CURRENT_LIMIT);
     leftFollower = new TalonFX(Constants.LEFT_SLAVE_ID);
     leftFollower.follow(leftMaster);
     leftFollower.setInverted(Constants.LEFT_INVERTED);
+    leftFollower.configStatorCurrentLimit(Constants.TALON_CURRENT_LIMIT);
 
     rightMaster = new TalonFX(Constants.RIGHT_MASTER_ID);
     rightMaster.setInverted(Constants.RIGHT_INVERTED);
+    rightMaster.configStatorCurrentLimit(Constants.TALON_CURRENT_LIMIT);
     rightFollower = new TalonFX(Constants.RIGHT_SLAVE_ID);
     rightFollower.follow(rightMaster);
     rightFollower.setInverted(Constants.RIGHT_INVERTED);
+    rightFollower.configStatorCurrentLimit(Constants.TALON_CURRENT_LIMIT);
 
     centerController = new TalonFX(Constants.CENTER_ID);
     centerController.setInverted(false);
+    centerController.configStatorCurrentLimit(Constants.TALON_CURRENT_LIMIT);
 
     gyroHost = new TalonSRX(Constants.HOST_TALON_ID);
     gyroHost.configFactoryDefault();
@@ -74,7 +85,18 @@ public class Robot extends TimedRobot {
     currentHeading = 0.0;
     previousHeading = getIMUYPR()[0];
 
-    driveMode = false;
+    driveMode = true;
+
+
+    // leftMaster, rightMaster, leftFollower, rightFollower, centerController };
+    /* ArrayList<TalonFX> instruments = new ArrayList<TalonFX>();
+    instruments.add(leftMaster);
+    instruments.add(rightMaster);
+    instruments.add(leftFollower);
+    instruments.add(rightFollower);
+    instruments.add(centerController);
+    orchestra = new Orchestra(instruments);
+    orchestra.loadMusic("WiiSports.chrp"); */
   }
 
   /**
@@ -115,12 +137,15 @@ public class Robot extends TimedRobot {
   public void autonomousPeriodic() {
   }
 
+  @Override
+  public void teleopInit() {
+  }
+
   /**
    * This function is called periodically during operator control.
    */
   @Override
   public void teleopPeriodic() {
-
     double rightY = -Math.max(-1, Math.min(1, xbox.getY(Hand.kRight) / Math.sqrt(2) * 2));
     double leftY = -Math.max(-1, Math.min(1, xbox.getY(Hand.kLeft) / Math.sqrt(2) * 2));
     double rightX = Math.max(-1, Math.min(1, xbox.getX(Hand.kRight) / Math.sqrt(2) * 2));
@@ -130,6 +155,18 @@ public class Robot extends TimedRobot {
     leftY = Helper.deadband(Helper.round(Math.pow(leftY, 3), 2), Constants.JOYSTICK_DEADBAND);
     rightX = Helper.deadband(Helper.round(Math.pow(rightX, 3), 2), Constants.JOYSTICK_DEADBAND);
     leftX = Helper.deadband(Helper.round(Math.pow(leftX, 3), 2), Constants.JOYSTICK_DEADBAND);
+
+    if (xbox.getAButtonPressed()) {
+      // orchestra.play();
+    }
+
+    // if(orchestra.isPlaying()) {
+    //   if(!(rightY == 0 && leftY == 0 && rightX == 0 && leftX == 0)) {
+    //     orchestra.stop();
+    //   } else {
+    //     return;
+    //   } 
+    // }
 
     if (xbox.getYButtonPressed()) {
       currentHeading = 0.0;
@@ -180,14 +217,16 @@ public class Robot extends TimedRobot {
       NetworkTableInstance.getDefault().getTable("limelight").getEntry("camMode").setNumber(1);
 
       if (driveMode) {
-        drive(rightY, rightX, 0.3 * leftX); // Static Drive
+        drive(rightY, rightX, leftX); // Static Drive
       } else {
         // driveFieldCentric(rightY, rightX, leftX, Helper.round(currentHeading, 2));
         driveFieldCentric(rightY, rightX, leftX, (int) currentHeading);
       }
     }
 
-    gyroHost.set(ControlMode.PercentOutput, leftY);
+    // 19600 raw sensor units per 100ms; 2048 CPR talon fx; 45.8205810234 m/s
+    SmartDashboard.putNumber("Velocity", (leftMaster.getSelectedSensorVelocity() + rightMaster.getSelectedSensorVelocity()) / 2);
+    // gyroHost.set(ControlMode.PercentOutput, leftY);
   }
 
   /**
@@ -232,9 +271,9 @@ public class Robot extends TimedRobot {
   }
 
   private double forwardLimit = 0.5;
-  private double sidwaysLimit = 0.52; // 0.4
+  private double sidwaysLimit = 0.5; // 0.4
 
-  private double angularPercentage = 0.3; // FOR CALCULATIONS (RATIO OF ANGULAR)
+  private double angularPercentage = 0.35; // FOR CALCULATIONS (RATIO OF ANGULAR)
 
   public void drive(double forwardVelocity, double sidewaysVelocity, double angularVelocity) {
     double rightPercentage = forwardVelocity * (1 - angularPercentage) + angularVelocity * angularPercentage;

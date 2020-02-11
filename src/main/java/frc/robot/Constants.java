@@ -1,5 +1,7 @@
 package frc.robot;
 
+import com.ctre.phoenix.motorcontrol.StatorCurrentLimitConfiguration;
+
 public class Constants {
     public static double JOYSTICK_DEADBAND = 0.1;
 
@@ -14,4 +16,6 @@ public class Constants {
     public static int CENTER_ID = 55;
 
     public static int HOST_TALON_ID = 6;
+
+    public static StatorCurrentLimitConfiguration TALON_CURRENT_LIMIT = new StatorCurrentLimitConfiguration(true, 38.5, 38.5, 0.25);
 }
