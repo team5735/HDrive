@@ -11,9 +11,8 @@ import java.util.ArrayList;
 
 import com.ctre.phoenix.motorcontrol.ControlMode;
 import com.ctre.phoenix.motorcontrol.StatorCurrentLimitConfiguration;
-import com.ctre.phoenix.motorcontrol.can.TalonFX;
-import com.ctre.phoenix.motorcontrol.can.TalonSRX;
-import com.ctre.phoenix.music.Orchestra;
+import com.ctre.phoenix.motorcontrol.VictorSPXControlMode;
+import com.ctre.phoenix.motorcontrol.can.*;
 import com.ctre.phoenix.sensors.PigeonIMU;
 
 import edu.wpi.first.networktables.NetworkTableInstance;
@@ -32,7 +31,8 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 public class Robot extends TimedRobot {
 
   private TalonFX leftMaster, rightMaster, leftFollower, rightFollower, centerController;
-  private TalonSRX gyroHost;
+  private TalonSRX gyroHost, intakeArm;
+  private VictorSPX intakeRoller;
   private PigeonIMU gyro;
   private XboxController xbox;
   private double currentHeading, previousHeading;
@@ -42,8 +42,6 @@ public class Robot extends TimedRobot {
   private double limelightDriveCommand = 0.0;
   private double limelightSteerCommand = 0.0;
   private boolean limelightLight = false;
-
-  private Orchestra orchestra;
 
   public enum LimelightState {
     VISION_TARGET,
@@ -85,18 +83,12 @@ public class Robot extends TimedRobot {
     currentHeading = 0.0;
     previousHeading = getIMUYPR()[0];
 
+    intakeArm = new TalonSRX(7);
+    intakeRoller = new VictorSPX(10);
+
+    intakeArm.overrideLimitSwitchesEnable(true);
+
     driveMode = true;
-
-
-    // leftMaster, rightMaster, leftFollower, rightFollower, centerController };
-    /* ArrayList<TalonFX> instruments = new ArrayList<TalonFX>();
-    instruments.add(leftMaster);
-    instruments.add(rightMaster);
-    instruments.add(leftFollower);
-    instruments.add(rightFollower);
-    instruments.add(centerController);
-    orchestra = new Orchestra(instruments);
-    orchestra.loadMusic("WiiSports.chrp"); */
   }
 
   /**
@@ -156,19 +148,7 @@ public class Robot extends TimedRobot {
     rightX = Helper.deadband(Helper.round(Math.pow(rightX, 3), 2), Constants.JOYSTICK_DEADBAND);
     leftX = Helper.deadband(Helper.round(Math.pow(leftX, 3), 2), Constants.JOYSTICK_DEADBAND);
 
-    if (xbox.getAButtonPressed()) {
-      // orchestra.play();
-    }
-
-    // if(orchestra.isPlaying()) {
-    //   if(!(rightY == 0 && leftY == 0 && rightX == 0 && leftX == 0)) {
-    //     orchestra.stop();
-    //   } else {
-    //     return;
-    //   } 
-    // }
-
-    if (xbox.getYButtonPressed()) {
+    if (xbox.getBackButton()) {
       currentHeading = 0.0;
     } else {
       currentHeading += getIMUYPR()[0] - previousHeading;
@@ -180,11 +160,24 @@ public class Robot extends TimedRobot {
       // System.out.println((driveMode) ? "Static Drive" : "Field Centric");
     }
 
-    // System.out.println(currentHeading + "    " + getIMUYPR()[0]);
+    if (xbox.getBButton()){
+      intakeRoller.set(VictorSPXControlMode.PercentOutput, Helper.deadband(xbox.getTriggerAxis(Hand.kLeft), 0.03));
+    } else {
+      intakeRoller.set(VictorSPXControlMode.PercentOutput, -Helper.deadband(xbox.getTriggerAxis(Hand.kLeft), 0.03));
+    }
 
-    boolean auto = xbox.getBumper(Hand.kLeft);
+    int pov = xbox.getPOV();
+    if(pov == 0){
+      intakeArm.set(ControlMode.PercentOutput, -0.15);
+    }
+    if(pov == 180){
+      intakeArm.set(ControlMode.PercentOutput, 0.075);
+    }
+    if(pov == -1){
+      intakeArm.set(ControlMode.PercentOutput, 0);
+    }
 
-    if (auto) {
+    if (xbox.getBumper(Hand.kLeft)) {
       limelightLight = true;
       NetworkTableInstance.getDefault().getTable("limelight").getEntry("pipeline").setNumber(0);
       NetworkTableInstance.getDefault().getTable("limelight").getEntry("ledMode").setNumber(limelightLight ? 3 : 1);
@@ -198,7 +191,7 @@ public class Robot extends TimedRobot {
       } else {
         System.out.println("Target Not Found");
       }
-    } else if (xbox.getBButton()) {
+    } else if (xbox.getBumper(Hand.kRight)) {
       limelightLight = true;
       NetworkTableInstance.getDefault().getTable("limelight").getEntry("pipeline").setNumber(1);
       NetworkTableInstance.getDefault().getTable("limelight").getEntry("ledMode").setNumber(limelightLight ? 3 : 1);
