@@ -7,8 +7,6 @@
 
 package frc.robot;
 
-import java.util.ArrayList;
-
 import com.ctre.phoenix.motorcontrol.ControlMode;
 import com.ctre.phoenix.motorcontrol.VictorSPXControlMode;
 import com.ctre.phoenix.motorcontrol.can.*;
@@ -32,8 +30,8 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 public class Robot extends TimedRobot {
 
   private TalonFX leftMaster, rightMaster, leftFollower, rightFollower, centerController;
-  private TalonSRX conveyorRoller, intakeArm;
-  private VictorSPX intakeRoller, fireController;
+  private TalonSRX fireController, intakeArm, hood;
+  private VictorSPX intakeRoller, conveyorRoller;
   private PigeonIMU gyro;
   private XboxController driverController, subsystemController;
   private double currentHeading, previousHeading;
@@ -65,43 +63,43 @@ public class Robot extends TimedRobot {
     //Drivetrain
     leftMaster = new TalonFX(Constants.LEFT_MASTER_ID);
     leftMaster.setInverted(Constants.LEFT_INVERTED);
-    leftMaster.configStatorCurrentLimit(Constants.TALON_CURRENT_LIMIT);
+    // leftMaster.configStatorCurrentLimit(Constants.TALON_CURRENT_LIMIT);
     leftFollower = new TalonFX(Constants.LEFT_SLAVE_ID);
     leftFollower.follow(leftMaster);
     leftFollower.setInverted(Constants.LEFT_INVERTED);
-    leftFollower.configStatorCurrentLimit(Constants.TALON_CURRENT_LIMIT);
+    // leftFollower.configStatorCurrentLimit(Constants.TALON_CURRENT_LIMIT);
 
     rightMaster = new TalonFX(Constants.RIGHT_MASTER_ID);
     rightMaster.setInverted(Constants.RIGHT_INVERTED);
-    rightMaster.configStatorCurrentLimit(Constants.TALON_CURRENT_LIMIT);
+    // rightMaster.configStatorCurrentLimit(Constants.TALON_CURRENT_LIMIT);
     rightFollower = new TalonFX(Constants.RIGHT_SLAVE_ID);
     rightFollower.follow(rightMaster);
     rightFollower.setInverted(Constants.RIGHT_INVERTED);
-    rightFollower.configStatorCurrentLimit(Constants.TALON_CURRENT_LIMIT);
+    // rightFollower.configStatorCurrentLimit(Constants.TALON_CURRENT_LIMIT);
 
     centerController = new TalonFX(Constants.CENTER_ID);
     centerController.setInverted(false);
-    centerController.configStatorCurrentLimit(Constants.TALON_CURRENT_LIMIT);
+    // centerController.configStatorCurrentLimit(Constants.TALON_CURRENT_LIMIT);
 
-    conveyorRoller = new TalonSRX(Constants.HOST_TALON_ID);
+    conveyorRoller = new VictorSPX(Constants.CONVEYOR_ROLLER);
     conveyorRoller.configFactoryDefault();
-    gyro = new PigeonIMU(conveyorRoller);
-
-    currentHeading = 0.0;
-    previousHeading = getIMUYPR()[0];
-
+    
     // Intake
-    intakeArm = new TalonSRX(7);
+    intakeArm = new TalonSRX(Constants.INTAKE_ARM_ID);
     intakeArm.configFactoryDefault();
-    intakeRoller = new VictorSPX(10);
+    intakeRoller = new VictorSPX(Constants.INTAKE_ROLLER_ID);
     intakeRoller.configFactoryDefault();
     intakeArm.overrideLimitSwitchesEnable(true);
 
     driveMode = true;
 
     // Shooter
-    fireController = new VictorSPX(4);
+    fireController = new TalonSRX(Constants.HOST_TALON_ID);
     fireController.configFactoryDefault();
+    gyro = new PigeonIMU(fireController);
+
+    hood = new TalonSRX(Constants.HOOD_CONTROLLER_ID);
+    hood.configFactoryDefault();
 
     masterNeo = new CANSparkMax(33, MotorType.kBrushless);
     masterNeo.restoreFactoryDefaults();
@@ -121,6 +119,9 @@ public class Robot extends TimedRobot {
     // Controllers
     driverController = new XboxController(0);
     subsystemController = new XboxController(1);
+
+    currentHeading = 0.0;
+    previousHeading = getIMUYPR()[0];
   }
 
   /**
@@ -136,6 +137,7 @@ public class Robot extends TimedRobot {
   public void robotPeriodic() {
     SmartDashboard.putString("driveMode", (driveMode) ? "Static Drive" : "Field Centric");
     SmartDashboard.putNumber("heading", currentHeading);
+    SmartDashboard.putNumber("flywheelRPM", masterNeo.getEncoder().getVelocity());
   }
 
   /**
@@ -194,10 +196,10 @@ public class Robot extends TimedRobot {
 
     if (driverController.getBButton()){
       intakeRoller.set(VictorSPXControlMode.PercentOutput, Helper.deadband(driverController.getTriggerAxis(Hand.kLeft), 0.03));
-      conveyorRoller.set(ControlMode.PercentOutput, Helper.deadband(driverController.getTriggerAxis(Hand.kLeft), 0.03));
+      // conveyorRoller.set(VictorSPXControlMode.PercentOutput, Helper.deadband(driverController.getTriggerAxis(Hand.kLeft), 0.03));
     } else {
       intakeRoller.set(VictorSPXControlMode.PercentOutput, -Helper.deadband(driverController.getTriggerAxis(Hand.kLeft), 0.03));
-      conveyorRoller.set(ControlMode.PercentOutput, -Helper.deadband(driverController.getTriggerAxis(Hand.kLeft), 0.03));
+      // conveyorRoller.set(VictorSPXControlMode.PercentOutput, -Helper.deadband(driverController.getTriggerAxis(Hand.kLeft), 0.03));
     }
 
     int driverPOV = driverController.getPOV();
@@ -209,6 +211,13 @@ public class Robot extends TimedRobot {
     }
     if(driverPOV == -1){
       intakeArm.set(ControlMode.PercentOutput, 0);
+      conveyorRoller.set(VictorSPXControlMode.PercentOutput, 0);
+    }
+    if(driverPOV == 90){
+      conveyorRoller.set(VictorSPXControlMode.PercentOutput, 0.25);
+    }
+    if(driverPOV == 270){
+      conveyorRoller.set(VictorSPXControlMode.PercentOutput, -0.25);
     }
 
     if (driverController.getBumper(Hand.kLeft)) {
@@ -250,40 +259,46 @@ public class Robot extends TimedRobot {
         driveFieldCentric(rightY, rightX, leftX, (int) currentHeading);
       }
 
-      if (subsystemController.getYButton()){
-        fireController.set(VictorSPXControlMode.PercentOutput, 0.25);
-      } else if (subsystemController.getYButtonReleased()){
-        fireController.set(VictorSPXControlMode.PercentOutput, 0);
-      }
+      // if (subsystemController.getYButton()){
+      //   fireController.set(ControlMode.PercentOutput, 0.25);
+      // } else if (subsystemController.getYButtonReleased()){
+      //   fireController.set(ControlMode.PercentOutput, 0);
+      // }
 
       int subsystemPOV = subsystemController.getPOV();
       if (subsystemPOV == 0){
-        conveyorRoller.set(ControlMode.PercentOutput, 0.25);
-        // fireController.set(VictorSPXControlMode.PercentOutput, 0.25);
+        // conveyorRoller.set(VictorSPXControlMode.PercentOutput, 0.25);
+        fireController.set(ControlMode.PercentOutput, 0.25);
       } else if (subsystemPOV == 180){
-        conveyorRoller.set(ControlMode.PercentOutput, -0.25);
-        // fireController.set(VictorSPXControlMode.PercentOutput, -0.25);
+        // conveyorRoller.set(VictorSPXControlMode.PercentOutput, -0.25);
+        fireController.set(ControlMode.PercentOutput, -0.25);
       } else if(subsystemPOV == -1){
-        conveyorRoller.set(ControlMode.PercentOutput,  0);
-        // fireController.set(VictorSPXControlMode.PercentOutput, 0);
+        // conveyorRoller.set(VictorSPXControlMode.PercentOutput,  0);
+        fireController.set(ControlMode.PercentOutput, 0);
       }
 
       if (subsystemController.getTriggerAxis(Hand.kRight) < .5){
-        flywheelPIDController.setReference(0, ControlType.kVelocity);
-        fireController.set(VictorSPXControlMode.PercentOutput, 0);
+        masterNeo.set(0);
+        // fireController.set(ControlMode.PercentOutput, 0);
       } else if (subsystemController.getTriggerAxis(Hand.kRight) < .75){
         // flywheel speed is actually a function of the distance to target. get this from limelight
-        flywheelPIDController.setReference(4500 , ControlType.kVelocity);
+        flywheelPIDController.setReference(3750 , ControlType.kVelocity);
       } else if (subsystemController.getTriggerAxis(Hand.kRight) > .95 && masterNeo.getEncoder().getVelocity() < 4500){
-        flywheelPIDController.setReference(4500, ControlType.kVelocity);
-        fireController.set(VictorSPXControlMode.PercentOutput, 0);
-        conveyorRoller.set(ControlMode.PercentOutput, 0);
+        flywheelPIDController.setReference(3750, ControlType.kVelocity);
+        // fireController.set(ControlMode.PercentOutput, 0);
+        // conveyorRoller.set(VictorSPXControlMode.PercentOutput, 0);
       } else if (subsystemController.getTriggerAxis(Hand.kRight) > .95 && masterNeo.getEncoder().getVelocity() > 4200){
-        flywheelPIDController.setReference(4500, ControlType.kVelocity);
-        fireController.set(VictorSPXControlMode.PercentOutput, 0.05);
-        conveyorRoller.set(ControlMode.PercentOutput, 0.05);
+        flywheelPIDController.setReference(3750, ControlType.kVelocity);
+        // fireController.set(ControlMode.PercentOutput, 0.05);
+        // conveyorRoller.set(VictorSPXControlMode.PercentOutput, 0.05);
       } else {
 
+      }
+
+      if (subsystemController.getBumper(Hand.kRight)){
+        hood.set(ControlMode.PercentOutput, 0.1*subsystemController.getY(Hand.kLeft));
+      } else {
+        hood.set(ControlMode.PercentOutput, -0.1*subsystemController.getY(Hand.kLeft));
       }
     }
 

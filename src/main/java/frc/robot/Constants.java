@@ -17,5 +17,12 @@ public class Constants {
 
     public static int HOST_TALON_ID = 6;
 
+    public static int INTAKE_ARM_ID = 7;
+    public static int INTAKE_ROLLER_ID = 10;
+
+    public static int CONVEYOR_ROLLER = 9;
+
+    public static int HOOD_CONTROLLER_ID = 3;
+
     public static StatorCurrentLimitConfiguration TALON_CURRENT_LIMIT = new StatorCurrentLimitConfiguration(true, 38.5, 38.5, 0.25);
 }
